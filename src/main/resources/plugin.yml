@@ -1,0 +1,6 @@
+name: StatusNamePlugin
+version: '1.0'
+main: de.unvii.statusNamePlugin.StatusNamePlugin
+api-version: '1.21'
+authors: [ UnVii ]
+description: This plugin is used to set the status shown in the name.
