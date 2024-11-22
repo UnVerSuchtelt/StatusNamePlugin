@@ -4,3 +4,7 @@ main: de.unvii.statusNamePlugin.StatusNamePlugin
 api-version: '1.21'
 authors: [ UnVii ]
 description: This plugin is used to set the status shown in the name.
+commands:
+  status:
+    usage: /status <status>
+    description: Mit diesem Command kann man sich einen Status vor seinen Namen schreiben
