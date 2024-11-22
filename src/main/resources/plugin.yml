@@ -7,4 +7,8 @@ description: This plugin is used to set the status shown in the name.
 commands:
   status:
     usage: /status <status>
-    description: Mit diesem Command kann man sich einen Status vor seinen Namen schreiben
+    description: Set your status
+    permissions:
+      statusnameplugin.use: false
+      statusnameplugin.createStatus: true
+      statusnameplugin.removeStatus: true
