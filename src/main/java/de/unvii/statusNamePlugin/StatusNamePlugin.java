@@ -1,12 +1,12 @@
 package de.unvii.statusNamePlugin;
 
 import org.bukkit.ChatColor;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,58 +38,68 @@ public final class StatusNamePlugin extends JavaPlugin implements TabCompleter {
         getLogger().info("StatusNamePlugin deactivated!");
     }
 
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("status")) {
-            if (args.length == 1) {
-                String statusName = args[0];
+        if (args.length == 1 && args[0].equalsIgnoreCase("clear")) {
+            if (sender instanceof Player player) {
+                clearPlayerStatus(player);
+                player.sendMessage(ChatColor.GREEN + "Your status has been cleared.");
+            } else {
+                sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+            }
+            return true;
+        }
 
-                // Command "/status clear" (Delete status)
-                if (statusName.equalsIgnoreCase("clear")) {
-                    if (sender instanceof Player player) {
-                        clearPlayerStatus(player);
-                        player.sendMessage(ChatColor.GREEN + "Your status has been cleared.");
-                    } else {
-                        sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+        if (args.length > 1) {
+            String operation = args[0];
+            String statusName = args[1];
+
+            switch (operation) {
+                case "set":
+                    if (!allowedStatuses.contains(statusName)) {
+                        sender.sendMessage(ChatColor.RED + "Invalid status! Please choose a status from: " + String.join(", ", allowedStatuses));
+                        break;
                     }
-                    return true;
-                }
 
-                // Set the player's status
-                if (allowedStatuses.contains(statusName)) {
                     if (sender instanceof Player player) {
                         setPlayerStatus(player, statusName);
                         player.sendMessage(ChatColor.GREEN + "Your status has been set to '" + statusName + "'.");
                     } else {
                         sender.sendMessage(ChatColor.RED + "Only players can use this command.");
                     }
-                    return true;
-                } else {
-                    sender.sendMessage(ChatColor.RED + "Invalid status! Please choose a status from: " + String.join(", ", allowedStatuses));
-                }
-            } else if (args.length == 2 && (args[0].equalsIgnoreCase("create") || args[0].equalsIgnoreCase("add")) && sender.hasPermission("createStatus")) {
-                String newStatus = args[1];
+                    break;
+                case "add":
+                case "create":
+                    if (sender.hasPermission("createStatus")) {
+                        if (allowedStatuses.contains(statusName)) {
+                            sender.sendMessage(ChatColor.RED + "This status already exists.");
+                            break;
+                        }
 
-                if (allowedStatuses.contains(newStatus)) {
-                    sender.sendMessage(ChatColor.RED + "This status already exists.");
-                    return false;
-                }
+                        addStatus(statusName);
+                        sender.sendMessage(ChatColor.GREEN + "The status '" + statusName + "' has been created and added to the config.");
+                    }
+                    break;
+                case "remove":
+                    if (sender.hasPermission("removeStatus")) {
+                        if (!allowedStatuses.contains(statusName)) {
+                            sender.sendMessage(ChatColor.RED + "This status does not exist.");
+                            break;
+                        }
 
-                addStatus(newStatus);
-                sender.sendMessage(ChatColor.GREEN + "The status '" + newStatus + "' has been created and added to the config.");
-                return true;
-            } else if (args.length == 2 && args[0].equalsIgnoreCase("remove") && sender.hasPermission("removeStatus")) {
-                String statusToRemove = args[1];
-
-                if (!allowedStatuses.contains(statusToRemove)) {
-                    sender.sendMessage(ChatColor.RED + "This status does not exist.");
-                    return false;
-                }
-
-                removeStatus(statusToRemove);
-                sender.sendMessage(ChatColor.GREEN + "The status '" + statusToRemove + "' has been removed.");
-                return true;
+                        removeStatus(statusName);
+                        sender.sendMessage(ChatColor.GREEN + "The status '" + statusName + "' has been removed.");
+                    }
+                    break;
+                default:
+                    sender.sendMessage(ChatColor.RED + "'" + operation + "' is not a valid operation.");
+                    break;
             }
+            return true;
+        }
+        if (args.length > 0) {
+            sender.sendMessage(ChatColor.RED + "'" + args[0] + "' is not a valid operation.");
         }
         return false;
     }
@@ -109,20 +119,20 @@ public final class StatusNamePlugin extends JavaPlugin implements TabCompleter {
                 }
 
                 suggestions.add("clear");
-                suggestions.addAll(allowedStatuses);
+                suggestions.add("set");
 
                 return suggestions;
             } else if (args.length == 2) {
-                if ((args[0].equalsIgnoreCase("create") || args[0].equalsIgnoreCase("add")) && sender.hasPermission("createStatus")) {
-                    // Suggest nothing specific for /status create or /status add
+                if (args[0].equalsIgnoreCase("set")) {
+                    return allowedStatuses;
+                } else if ((args[0].equalsIgnoreCase("create") || args[0].equalsIgnoreCase("add")) && sender.hasPermission("createStatus")) {
                     return Collections.emptyList();
                 } else if (args[0].equalsIgnoreCase("remove") && sender.hasPermission("removeStatus")) {
-                    // Suggest allowed statuses for /status remove
                     return allowedStatuses;
                 }
             }
         }
-        return null; // Return null to allow default behavior
+        return null;
     }
 
     private void setPlayerStatus(Player player, String statusName) {
