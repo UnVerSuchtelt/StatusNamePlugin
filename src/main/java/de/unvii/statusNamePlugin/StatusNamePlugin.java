@@ -11,6 +11,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 public final class StatusNamePlugin extends JavaPlugin implements TabCompleter {
 
@@ -83,24 +84,31 @@ public final class StatusNamePlugin extends JavaPlugin implements TabCompleter {
         }
     }
 
-    private void setSenderStatus(CommandSender sender, String statusName) {
-        if (!allowedStatuses.contains(statusName)) {
-            sender.sendMessage(ChatColor.RED + "Invalid status! Please choose a status from: " + String.join(", ", allowedStatuses));
+    private void setSenderStatus(CommandSender sender, String statusNameWithoutAnyColor) {
+        Optional<String> potentialStatusName = allowedStatuses.stream() //
+                .filter(s -> ChatColor.stripColor(s).equalsIgnoreCase(statusNameWithoutAnyColor))
+                .findFirst();
+
+        if (potentialStatusName.isEmpty()) {
+            sender.sendMessage(ChatColor.RED + "Invalid status! Please choose a status from: " + String.join(ChatColor.RED + ", ", allowedStatuses));
             return;
         }
 
+        String statusName = potentialStatusName.get();
+
         if (sender instanceof Player player) {
-            String newPlayerName = "[" + statusName + "] " + player.getName();
+            String newPlayerName = ChatColor.RESET + "[" + statusName + ChatColor.RESET + "] " + player.getName();
             player.setPlayerListName(newPlayerName);
             player.setDisplayName(newPlayerName);
 
-            player.sendMessage(ChatColor.GREEN + "Your status has been set to '" + statusName + "'.");
+            player.sendMessage(ChatColor.GREEN + "Your status has been set to '" + statusName + ChatColor.GREEN + "'.");
         } else {
             sender.sendMessage(ChatColor.RED + "Only players can use this command.");
         }
     }
 
-    private void createStatus(CommandSender sender, String statusName) {
+    private void createStatus(CommandSender sender, String statusNameWithWrongColorCode) {
+        String statusName = ChatColor.translateAlternateColorCodes('&', statusNameWithWrongColorCode);
         if (allowedStatuses.contains(statusName)) {
             sender.sendMessage(ChatColor.RED + "This status already exists.");
             return;
@@ -110,20 +118,26 @@ public final class StatusNamePlugin extends JavaPlugin implements TabCompleter {
         allowedStatuses.add(statusName);
         config.set("allowed-statuses", allowedStatuses);
         saveConfig();
-        sender.sendMessage(ChatColor.GREEN + "The status '" + statusName + "' has been created and added to the config.");
+        sender.sendMessage(ChatColor.GREEN + "The status '" + statusName + ChatColor.GREEN + "' has been created and added to the config.");
     }
 
-    private void removeStatus(CommandSender sender, String statusName) {
-        if (!allowedStatuses.contains(statusName)) {
+    private void removeStatus(CommandSender sender, String statusNameWithoutAnyColor) {
+        Optional<String> potentialStatusName = allowedStatuses.stream() //
+                .filter(s -> ChatColor.stripColor(s).equalsIgnoreCase(statusNameWithoutAnyColor))
+                .findFirst();
+
+        if (potentialStatusName.isEmpty()) {
             sender.sendMessage(ChatColor.RED + "This status does not exist.");
             return;
         }
+
+        String statusName = potentialStatusName.get();
 
         FileConfiguration config = getConfig();
         allowedStatuses.remove(statusName);
         config.set("allowed-statuses", allowedStatuses);
         saveConfig();
-        sender.sendMessage(ChatColor.GREEN + "The status '" + statusName + "' has been removed.");
+        sender.sendMessage(ChatColor.GREEN + "The status '" + statusName + ChatColor.GREEN + "' has been removed.");
     }
 
     @Override
@@ -147,14 +161,14 @@ public final class StatusNamePlugin extends JavaPlugin implements TabCompleter {
             } else if (args.length == 2) {
                 switch (args[0]) {
                     case "set":
-                        return allowedStatuses;
+                        return allowedStatuses.stream().map(ChatColor::stripColor).toList();
                     case "add":
                     case "create":
                         if (!sender.hasPermission("createStatus")) return null;
                         return Collections.emptyList();
                     case "remove":
                         if (!sender.hasPermission("removeStatus")) return null;
-                        return allowedStatuses;
+                        return allowedStatuses.stream().map(ChatColor::stripColor).toList();
                     default:
                         return null;
                 }
