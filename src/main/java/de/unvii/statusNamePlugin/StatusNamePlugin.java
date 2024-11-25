@@ -19,15 +19,12 @@ public final class StatusNamePlugin extends JavaPlugin implements TabCompleter {
 
     @Override
     public void onEnable() {
-        // Load configuration
         getConfig().addDefault("allowed-statuses", allowedStatuses);
         getConfig().options().copyDefaults(true);
         saveConfig();
 
-        // Load the list of allowed status names from the config.yml
         allowedStatuses = getConfig().getStringList("allowed-statuses");
 
-        // Register the tab completer
         getCommand("status").setTabCompleter(this);
 
         getLogger().info("StatusNamePlugin activated!");
@@ -41,56 +38,30 @@ public final class StatusNamePlugin extends JavaPlugin implements TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length == 1 && args[0].equalsIgnoreCase("clear")) {
-            if (sender instanceof Player player) {
-                clearPlayerStatus(player);
-                player.sendMessage(ChatColor.GREEN + "Your status has been cleared.");
-            } else {
-                sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+        if (command.getName().equalsIgnoreCase("status")) {
+            if (args.length < 1) {
+                return false;
             }
-            return true;
-        }
 
-        if (args.length > 1) {
             String operation = args[0];
-            String statusName = args[1];
-
             switch (operation) {
+                case "clear":
+                    clearSenderStatus(sender);
+                    break;
                 case "set":
-                    if (!allowedStatuses.contains(statusName)) {
-                        sender.sendMessage(ChatColor.RED + "Invalid status! Please choose a status from: " + String.join(", ", allowedStatuses));
-                        break;
-                    }
-
-                    if (sender instanceof Player player) {
-                        setPlayerStatus(player, statusName);
-                        player.sendMessage(ChatColor.GREEN + "Your status has been set to '" + statusName + "'.");
-                    } else {
-                        sender.sendMessage(ChatColor.RED + "Only players can use this command.");
-                    }
+                    if (args.length < 2) return false;
+                    setSenderStatus(sender, args[1]);
                     break;
                 case "add":
                 case "create":
-                    if (sender.hasPermission("createStatus")) {
-                        if (allowedStatuses.contains(statusName)) {
-                            sender.sendMessage(ChatColor.RED + "This status already exists.");
-                            break;
-                        }
-
-                        addStatus(statusName);
-                        sender.sendMessage(ChatColor.GREEN + "The status '" + statusName + "' has been created and added to the config.");
-                    }
+                    if (args.length < 2) return false;
+                    if (!sender.hasPermission("createStatus")) return true;
+                    createStatus(sender, args[1]);
                     break;
                 case "remove":
-                    if (sender.hasPermission("removeStatus")) {
-                        if (!allowedStatuses.contains(statusName)) {
-                            sender.sendMessage(ChatColor.RED + "This status does not exist.");
-                            break;
-                        }
-
-                        removeStatus(statusName);
-                        sender.sendMessage(ChatColor.GREEN + "The status '" + statusName + "' has been removed.");
-                    }
+                    if (args.length < 2) return false;
+                    if (!sender.hasPermission("removeStatus")) return true;
+                    removeStatus(sender, args[1]);
                     break;
                 default:
                     sender.sendMessage(ChatColor.RED + "'" + operation + "' is not a valid operation.");
@@ -98,10 +69,61 @@ public final class StatusNamePlugin extends JavaPlugin implements TabCompleter {
             }
             return true;
         }
-        if (args.length > 0) {
-            sender.sendMessage(ChatColor.RED + "'" + args[0] + "' is not a valid operation.");
-        }
         return false;
+    }
+
+    private void clearSenderStatus(CommandSender sender) {
+        if (sender instanceof Player player) {
+            player.setPlayerListName(player.getName());
+            player.setDisplayName(player.getName());
+
+            player.sendMessage(ChatColor.GREEN + "Your status has been cleared.");
+        } else {
+            sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+        }
+    }
+
+    private void setSenderStatus(CommandSender sender, String statusName) {
+        if (!allowedStatuses.contains(statusName)) {
+            sender.sendMessage(ChatColor.RED + "Invalid status! Please choose a status from: " + String.join(", ", allowedStatuses));
+            return;
+        }
+
+        if (sender instanceof Player player) {
+            String newPlayerName = "[" + statusName + "] " + player.getName();
+            player.setPlayerListName(newPlayerName);
+            player.setDisplayName(newPlayerName);
+
+            player.sendMessage(ChatColor.GREEN + "Your status has been set to '" + statusName + "'.");
+        } else {
+            sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+        }
+    }
+
+    private void createStatus(CommandSender sender, String statusName) {
+        if (allowedStatuses.contains(statusName)) {
+            sender.sendMessage(ChatColor.RED + "This status already exists.");
+            return;
+        }
+
+        FileConfiguration config = getConfig();
+        allowedStatuses.add(statusName);
+        config.set("allowed-statuses", allowedStatuses);
+        saveConfig();
+        sender.sendMessage(ChatColor.GREEN + "The status '" + statusName + "' has been created and added to the config.");
+    }
+
+    private void removeStatus(CommandSender sender, String statusName) {
+        if (!allowedStatuses.contains(statusName)) {
+            sender.sendMessage(ChatColor.RED + "This status does not exist.");
+            return;
+        }
+
+        FileConfiguration config = getConfig();
+        allowedStatuses.remove(statusName);
+        config.set("allowed-statuses", allowedStatuses);
+        saveConfig();
+        sender.sendMessage(ChatColor.GREEN + "The status '" + statusName + "' has been removed.");
     }
 
     @Override
@@ -110,54 +132,34 @@ public final class StatusNamePlugin extends JavaPlugin implements TabCompleter {
             if (args.length == 1) {
                 List<String> suggestions = new ArrayList<>();
 
+                suggestions.add("clear");
+                suggestions.add("set");
+
                 if (sender.hasPermission("createStatus")) {
                     suggestions.add("create");
                     suggestions.add("add");
                 }
+
                 if (sender.hasPermission("removeStatus")) {
                     suggestions.add("remove");
                 }
-
-                suggestions.add("clear");
-                suggestions.add("set");
-
                 return suggestions;
             } else if (args.length == 2) {
-                if (args[0].equalsIgnoreCase("set")) {
-                    return allowedStatuses;
-                } else if ((args[0].equalsIgnoreCase("create") || args[0].equalsIgnoreCase("add")) && sender.hasPermission("createStatus")) {
-                    return Collections.emptyList();
-                } else if (args[0].equalsIgnoreCase("remove") && sender.hasPermission("removeStatus")) {
-                    return allowedStatuses;
+                switch (args[0]) {
+                    case "set":
+                        return allowedStatuses;
+                    case "add":
+                    case "create":
+                        if (!sender.hasPermission("createStatus")) return null;
+                        return Collections.emptyList();
+                    case "remove":
+                        if (!sender.hasPermission("removeStatus")) return null;
+                        return allowedStatuses;
+                    default:
+                        return null;
                 }
             }
         }
         return null;
-    }
-
-    private void setPlayerStatus(Player player, String statusName) {
-        String newPlayerName = "[" + statusName + "] " + player.getName();
-
-        player.setPlayerListName(newPlayerName);
-        player.setDisplayName(newPlayerName);
-    }
-
-    private void clearPlayerStatus(Player player) {
-        player.setPlayerListName(player.getName());
-        player.setDisplayName(player.getName());
-    }
-
-    private void addStatus(String newStatus) {
-        FileConfiguration config = getConfig();
-        allowedStatuses.add(newStatus);
-        config.set("allowed-statuses", allowedStatuses);
-        saveConfig();
-    }
-
-    private void removeStatus(String statusToRemove) {
-        FileConfiguration config = getConfig();
-        allowedStatuses.remove(statusToRemove);
-        config.set("allowed-statuses", allowedStatuses);
-        saveConfig();
     }
 }

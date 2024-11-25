@@ -6,7 +6,7 @@ authors: [ UnVii ]
 description: This plugin is used to set the status shown in the name.
 commands:
   status:
-    usage: /status <status>
+    usage: /status set <status> or /status clear
     description: Set your status
     permissions:
       statusnameplugin.use: false
