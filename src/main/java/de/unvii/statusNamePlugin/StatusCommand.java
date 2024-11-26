@@ -8,8 +8,7 @@ import org.bukkit.entity.Player;
 
 import java.util.Optional;
 
-import static de.unvii.statusNamePlugin.StatusNamePlugin.allowedStatuses;
-import static de.unvii.statusNamePlugin.StatusNamePlugin.plugin;
+import static de.unvii.statusNamePlugin.StatusNamePlugin.*;
 
 public class StatusCommand implements CommandExecutor {
 
@@ -54,6 +53,10 @@ public class StatusCommand implements CommandExecutor {
             player.setPlayerListName(player.getName());
             player.setDisplayName(player.getName());
 
+            selectedStatuses.put(player.getUniqueId(), "");
+            plugin.getConfig().set("selected-statuses", ConverterHelper.convertMapToSeparatedList(selectedStatuses));
+            plugin.saveConfig();
+
             player.sendMessage(ChatColor.GREEN + "Your status has been cleared.");
         } else {
             sender.sendMessage(ChatColor.RED + "Only players can use this command.");
@@ -76,6 +79,10 @@ public class StatusCommand implements CommandExecutor {
             String newPlayerName = ChatColor.RESET + "[" + statusName + ChatColor.RESET + "] " + player.getName();
             player.setPlayerListName(newPlayerName);
             player.setDisplayName(newPlayerName);
+
+            selectedStatuses.put(player.getUniqueId(), statusName);
+            plugin.getConfig().set("selected-statuses", ConverterHelper.convertMapToSeparatedList(selectedStatuses));
+            plugin.saveConfig();
 
             player.sendMessage(ChatColor.GREEN + "Your status has been set to '" + statusName + ChatColor.GREEN + "'.");
         } else {
