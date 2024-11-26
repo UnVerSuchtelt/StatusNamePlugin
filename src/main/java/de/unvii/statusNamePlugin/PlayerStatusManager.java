@@ -30,7 +30,7 @@ public class PlayerStatusManager {
                 .findFirst();
 
         if (potentialStatusName.isEmpty()) {
-            sender.sendMessage(ChatColor.RED + "Invalid status! Please choose a status from: " + String.join(ChatColor.RED + ", ", allowedStatuses));
+            sender.sendMessage(ChatColor.RED + "'" + statusNameWithoutAnyColor + "' is an invalid status! Please choose a status from: " + String.join(ChatColor.RED + ", ", allowedStatuses));
             return;
         }
 
