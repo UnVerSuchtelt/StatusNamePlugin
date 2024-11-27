@@ -1,10 +1,14 @@
 package de.unvii.statusNamePlugin;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import static de.unvii.statusNamePlugin.StatusNamePlugin.*;
 
@@ -75,6 +79,25 @@ public class PlayerStatusManager {
         }
 
         String statusName = potentialStatusName.get();
+
+        if (selectedStatuses.containsValue(statusName)) {
+            List<UUID> uuidsToRemove = selectedStatuses.entrySet().stream() //
+                    .filter(entry -> entry.getValue().equalsIgnoreCase(statusName)) //
+                    .map(Map.Entry::getKey) //
+                    .toList();
+
+            // clear status from all online players
+            uuidsToRemove.stream() //
+                    .map(Bukkit::getPlayer) //
+                    .filter(Bukkit.getOnlinePlayers()::contains) //
+                    .forEach(PlayerStatusManager::clearSenderStatus);
+
+            // remove last statuses in config file (necessary because of offline players)
+            uuidsToRemove.forEach(selectedStatuses::remove);
+
+            plugin.getConfig().set("selected-statuses", ConverterHelper.convertMapToSeparatedList(selectedStatuses));
+            plugin.saveConfig();
+        }
 
         allowedStatuses.remove(statusName);
         plugin.getConfig().set("allowed-statuses", allowedStatuses);
